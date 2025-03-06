@@ -1,0 +1,56 @@
+# virtual-drag-and-drop--using-hand-tracking
+this can be used for drag the cursor for the display system it can be done by the virtual
+import cv2
+import mediapipe as mp
+import pyautogui
+
+mp_hands = mp.solutions.hands
+hands = mp_hands.Hands()
+mp_drawing = mp.solutions.drawing_utils
+
+cap = cv2.VideoCapture(0)
+
+# Get screen size
+screen_width, screen_height = pyautogui.size()
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    frame = cv2.flip(frame, 1)
+    h, w, c = frame.shape
+
+    # Convert the BGR image to RGB.
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    result = hands.process(rgb_frame)
+
+    if result.multi_hand_landmarks:
+        for hand_landmarks in result.multi_hand_landmarks:
+            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
+            # Coordinates of the tip of the index finger (landmark #8)
+            index_finger_tip = hand_landmarks.landmark[8]
+            x = int(index_finger_tip.x * w)
+            y = int(index_finger_tip.y * h)
+
+            # Map coordinates to screen size
+            screen_x = int(index_finger_tip.x * screen_width)
+            screen_y = int(index_finger_tip.y * screen_height)
+
+            # Display circle at fingertip
+            cv2.circle(frame, (x, y), 10, (0, 255, 0), -1)
+
+            # Drag-and-drop logic
+            if hand_landmarks.landmark[8].z < hand_landmarks.landmark[6].z:  # Finger curled
+                pyautogui.mouseDown(x=screen_x, y=screen_y)
+            else:
+                pyautogui.mouseUp(x=screen_x, y=screen_y)
+
+    cv2.imshow('Hand Tracking', frame)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
